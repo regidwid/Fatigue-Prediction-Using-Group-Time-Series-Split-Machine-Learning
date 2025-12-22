@@ -92,7 +92,7 @@ if file:
     cost_sample = total_cost / len(y_test)
 
     st.subheader("Cost Analysis")
-    st.write(f"TP Cost (Gain): **{tp_cost}**")
+    st.write(f"TP Cost : **{tp_cost}**")
     st.write(f"FP Cost: **{fp_cost}**")
     st.write(f"FN Cost: **{fn_cost}**")
     st.write(f"### Total Cost: **{total_cost}**")
@@ -111,3 +111,102 @@ if file:
     ax.legend()
 
     st.pyplot(fig)
+
+# =========================================================
+# ADDITIONAL ANALYTICS & VISUALIZATION
+# =========================================================
+
+st.header("📊 Fatigue Prediction Analytics")
+
+# Combine raw + prediction results
+result_df = data_test_clean.copy()
+result_df["pred_proba"] = y_proba
+result_df["predicted"] = y_pred
+
+# -----------------------------
+# 1. Distribution of Predictions
+# -----------------------------
+st.subheader("1️⃣ Distribution of Prediction Probabilities")
+
+fig1, ax1 = plt.subplots(figsize=(6, 4))
+sns.histplot(result_df["pred_proba"], kde=True, ax=ax1)
+ax1.set_title("Prediction Probability Distribution")
+ax1.set_xlabel("Fatigue Probability")
+ax1.set_ylabel("Frequency")
+st.pyplot(fig1)
+
+# -----------------------------
+# 2. Fatigue Probability by Weather Condition
+# -----------------------------
+st.subheader("2️⃣ Fatigue Probability per Weather Condition")
+
+fig2, ax2 = plt.subplots(figsize=(6, 4))
+sns.boxplot(data=result_df, x="conditions", y="pred_proba", ax=ax2)
+ax2.set_title("Fatigue Probability by Conditions")
+ax2.set_xlabel("Weather Condition")
+ax2.set_ylabel("Predicted Probability")
+plt.xticks(rotation=20)
+st.pyplot(fig2)
+
+# -----------------------------
+# 3. Actual vs Predicted Fatigue Count
+# -----------------------------
+st.subheader("3️⃣ Actual vs Predicted Fatigue")
+
+fig3, ax3 = plt.subplots(figsize=(6, 4))
+sns.countplot(data=result_df, x="next_week_fatigue", hue="predicted", ax=ax3)
+ax3.set_title("Actual vs Predicted Fatigue")
+ax3.set_xlabel("Actual Label")
+ax3.set_ylabel("Count")
+st.pyplot(fig3)
+
+# -----------------------------
+# 4. Feature Impact Visualization (Numeric)
+# -----------------------------
+st.subheader("4️⃣ Distribution of Features by Actual Fatigue")
+
+for col in FEATURES_NUM:
+    fig, ax = plt.subplots(figsize=(6, 4))
+    sns.boxplot(data=result_df, x="next_week_fatigue", y=col, ax=ax)
+    ax.set_title(f"{col} vs Actual Fatigue")
+    ax.set_xlabel("Actual Fatigue Label")
+    st.pyplot(fig)
+
+# -----------------------------
+# 5. Prediction Error Analysis
+# -----------------------------
+st.subheader("5️⃣ Prediction Error Analysis (TP / FP / FN / TN)")
+
+def classify_case(row):
+    if row["next_week_fatigue"] == 1 and row["predicted"] == 1:
+        return "TP"
+    if row["next_week_fatigue"] == 0 and row["predicted"] == 1:
+        return "FP"
+    if row["next_week_fatigue"] == 1 and row["predicted"] == 0:
+        return "FN"
+    return "TN"
+
+result_df["case_type"] = result_df.apply(classify_case, axis=1)
+
+fig5, ax5 = plt.subplots(figsize=(6, 4))
+sns.countplot(data=result_df, x="case_type", ax=ax5)
+ax5.set_title("Error Breakdown (TP / FP / FN / TN)")
+ax5.set_xlabel("Case Type")
+ax5.set_ylabel("Count")
+st.pyplot(fig5)
+
+# -----------------------------
+# 6. Heatmap of Feature Correlation
+# -----------------------------
+st.subheader("6️⃣ Feature Correlation Heatmap")
+
+corr = result_df[FEATURES_NUM + ["pred_proba"]].corr()
+
+fig6, ax6 = plt.subplots(figsize=(6, 4))
+sns.heatmap(corr, annot=True, cmap="coolwarm", ax=ax6)
+ax6.set_title("Correlation Heatmap")
+st.pyplot(fig6)
+
+st.success("Visualisasi analisis fatigue berhasil ditambahkan!")
+
+
