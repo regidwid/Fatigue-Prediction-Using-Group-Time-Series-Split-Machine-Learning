@@ -99,139 +99,106 @@ if file:
     st.write(f"Cost per Sample: **{cost_sample:.2f}**")
 
 # =========================================================
-# DASHBOARD VISUALIZATION
+# DASHBOARD VISUALIZATION (NO ACTUAL LABEL AVAILABLE)
 # =========================================================
 
-st.header("📊 Fatigue Dashboard Visualization")
+st.header("📊 Fatigue Prediction Dashboard")
 
-# Gabungkan hasil prediksi dengan data asli
-result_df = data_test_clean.copy()
+result_df = X_test.copy()
 result_df["pred_proba"] = y_proba
 result_df["predicted"] = y_pred
 
 # -------------------------
-# 1. Bar Chart: Jumlah Fatigue Actual vs Predicted
+# 1. Pie Chart: Distribusi Predicted Fatigue
 # -------------------------
-st.subheader("1️⃣ Jumlah Fatigue: Actual vs Predicted")
+st.subheader("1️⃣ Persentase Prediksi Fatigue")
 
-fatigue_counts = pd.DataFrame({
-    "Actual": result_df["next_week_fatigue"].value_counts(),
-    "Predicted": result_df["predicted"].value_counts()
-})
-
-fig1, ax1 = plt.subplots(figsize=(6, 4))
-fatigue_counts.plot(kind="bar", ax=ax1)
-ax1.set_title("Actual vs Predicted Fatigue")
-ax1.set_xlabel("Label")
-ax1.set_ylabel("Jumlah")
+fig1, ax1 = plt.subplots(figsize=(5, 5))
+result_df["predicted"].value_counts().plot(
+    kind="pie",
+    autopct="%1.1f%%",
+    labels=["Tidak Fatigue (0)", "Fatigue (1)"],
+    ax=ax1
+)
+ax1.set_ylabel("")
+ax1.set_title("Distribusi Prediksi Fatigue")
 st.pyplot(fig1)
 
-
 # -------------------------
-# 2. Pie Chart: Presentase Fatigue Actual
+# 2. Histogram: Distribusi Probabilitas Prediksi
 # -------------------------
-st.subheader("2️⃣ Presentase Fatigue (Actual)")
+st.subheader("2️⃣ Distribusi Probabilitas Prediksi Fatigue")
 
-fig2, ax2 = plt.subplots(figsize=(5, 5))
-result_df["next_week_fatigue"].value_counts().plot(
-    kind="pie", autopct="%1.1f%%", labels=["Tidak Fatigue (0)", "Fatigue (1)"], ax=ax2
-)
-ax2.set_ylabel("")
-ax2.set_title("Presentase Fatigue (Actual)")
+fig2, ax2 = plt.subplots(figsize=(6, 4))
+sns.histplot(result_df["pred_proba"], kde=True, ax=ax2)
+ax2.set_title("Distribusi Probabilitas Prediksi")
+ax2.set_xlabel("Predicted Probability")
+ax2.set_ylabel("Frequency")
 st.pyplot(fig2)
 
-
 # -------------------------
-# 3. Pie Chart: Presentase Predicted Fatigue
+# 3. Rata-rata probabilitas per kondisi cuaca
 # -------------------------
-st.subheader("3️⃣ Presentase Prediksi Fatigue")
+st.subheader("3️⃣ Rata-rata Probabilitas Fatigue per Kondisi Cuaca")
 
-fig3, ax3 = plt.subplots(figsize=(5, 5))
-result_df["predicted"].value_counts().plot(
-    kind="pie", autopct="%1.1f%%", labels=["Pred 0", "Pred 1"], ax=ax3
-)
-ax3.set_ylabel("")
-ax3.set_title("Presentase Predicted Fatigue")
+weather_avg = result_df.groupby("conditions")["pred_proba"].mean().sort_values()
+
+fig3, ax3 = plt.subplots(figsize=(7, 4))
+weather_avg.plot(kind="bar", ax=ax3)
+ax3.set_title("Rata-rata Probabilitas Fatigue Berdasarkan Cuaca")
+ax3.set_xlabel("Kondisi Cuaca")
+ax3.set_ylabel("Probabilitas Rata-rata")
 st.pyplot(fig3)
 
-
 # -------------------------
-# 4. Bar Chart: Rata-rata Probabilitas Fatigue per Kondisi Cuaca
+# 4. Bar Chart: Jumlah Prediksi Fatigue per Kondisi Cuaca
 # -------------------------
-st.subheader("4️⃣ Rata-rata Probabilitas Fatigue per Kondisi Cuaca")
+st.subheader("4️⃣ Distribusi Prediksi Fatigue per Kondisi Cuaca")
 
-group_avg = result_df.groupby("conditions")["pred_proba"].mean().sort_values()
+fatigue_by_weather = result_df.groupby("conditions")["predicted"].sum().sort_values()
 
 fig4, ax4 = plt.subplots(figsize=(7, 4))
-group_avg.plot(kind="bar", ax=ax4)
-ax4.set_title("Rata-rata Probabilitas Fatigue per Kondisi Cuaca")
-ax4.set_xlabel("Cuaca")
-ax4.set_ylabel("Probabilitas Fatigue")
+fatigue_by_weather.plot(kind="bar", ax=ax4)
+ax4.set_title("Jumlah Prediksi Fatigue per Kondisi Cuaca")
+ax4.set_xlabel("Kondisi Cuaca")
+ax4.set_ylabel("Jumlah Prediksi Fatigue")
 st.pyplot(fig4)
 
-
 # -------------------------
-# 5. Histogram: Distribusi Prediksi Probabilitas
+# 5. Boxplot: Distribusi fitur numerik
 # -------------------------
-st.subheader("5️⃣ Distribusi Probabilitas Prediksi")
-
-fig5, ax5 = plt.subplots(figsize=(6, 4))
-sns.histplot(result_df["pred_proba"], kde=True, ax=ax5)
-ax5.set_title("Distribusi Probability Fatigue")
-ax5.set_xlabel("Predicted Probability")
-ax5.set_ylabel("Frequency")
-st.pyplot(fig5)
-
-
-# -------------------------
-# 6. Boxplot: Hubungan Fitur Numerik terhadap Fatigue
-# -------------------------
-st.subheader("6️⃣ Analisis Fitur Numerik berdasarkan Actual Fatigue")
+st.subheader("5️⃣ Distribusi Fitur Numerik")
 
 for col in FEATURES_NUM:
     fig, ax = plt.subplots(figsize=(6, 4))
-    sns.boxplot(data=result_df, x="next_week_fatigue", y=col, ax=ax)
-    ax.set_title(f"{col} vs Actual Fatigue")
-    ax.set_xlabel("Actual Fatigue (0/1)")
+    sns.boxplot(data=result_df, y=col, ax=ax)
+    ax.set_title(f"Distribusi Fitur: {col}")
     ax.set_ylabel(col)
     st.pyplot(fig)
 
+# -------------------------
+# 6. Scatter: Hubungan fitur numerik vs probabilitas
+# -------------------------
+st.subheader("6️⃣ Hubungan Fitur vs Probabilitas Prediksi")
+
+for col in FEATURES_NUM:
+    fig, ax = plt.subplots(figsize=(6, 4))
+    sns.scatterplot(data=result_df, x=col, y="pred_proba", ax=ax)
+    ax.set_title(f"{col} vs Probabilitas Fatigue")
+    ax.set_xlabel(col)
+    ax.set_ylabel("Pred Probability")
+    st.pyplot(fig)
 
 # -------------------------
-# 7. Breakdown TP / FP / FN / TN
+# 7. Heatmap korelasi fitur + prediksi
 # -------------------------
-st.subheader("7️⃣ Breakdown TP / FP / FN / TN")
-
-def case_type(row):
-    if row["next_week_fatigue"] == 1 and row["predicted"] == 1:
-        return "TP"
-    if row["next_week_fatigue"] == 0 and row["predicted"] == 1:
-        return "FP"
-    if row["next_week_fatigue"] == 1 and row["predicted"] == 0:
-        return "FN"
-    return "TN"
-
-result_df["case_type"] = result_df.apply(case_type, axis=1)
-
-fig7, ax7 = plt.subplots(figsize=(6, 4))
-sns.countplot(data=result_df, x="case_type", ax=ax7)
-ax7.set_title("Error Case Breakdown (TP / FP / FN / TN)")
-ax7.set_xlabel("Case Type")
-ax7.set_ylabel("Count")
-st.pyplot(fig7)
-
-
-# -------------------------
-# 8. Heatmap Korelasi Fitur
-# -------------------------
-st.subheader("8️⃣ Korelasi Fitur terhadap Probabilitas Fatigue")
+st.subheader("7️⃣ Korelasi Fitur dengan Probabilitas Prediksi")
 
 corr = result_df[FEATURES_NUM + ["pred_proba"]].corr()
 
-fig8, ax8 = plt.subplots(figsize=(6, 4))
-sns.heatmap(corr, annot=True, cmap="coolwarm", ax=ax8)
-ax8.set_title("Correlation Heatmap")
-st.pyplot(fig8)
+fig7, ax7 = plt.subplots(figsize=(6, 4))
+sns.heatmap(corr, annot=True, cmap="coolwarm", ax=ax7)
+ax7.set_title("Heatmap Korelasi")
+st.pyplot(fig7)
 
-st.success("🎉 Dashboard visualisasi fatigue berhasil ditambahkan!")
-
+st.success("🎉 Dashboard visualisasi prediksi fatigue (tanpa actual) berhasil ditambahkan!")
