@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.metrics import confusion_matrix, roc_curve, auc
+from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -12,7 +12,6 @@ import seaborn as sns
 st.title("Fatigue Prediction - Gradient Boosting Model Evaluation")
 st.write("This Streamlit app loads a trained model and evaluates it using uploaded test data.")
 
-# Load model
 @st.cache_resource
 def load_model():
     try:
@@ -21,104 +20,104 @@ def load_model():
         params = joblib.load('gradient_boosting_best_params.pkl')
         return model, config, params
     except Exception as e:
-        st.error(f"Error loading model files: {e}")
+        st.error(f"Error loading model: {e}")
         return None, None, None
 
 model, config, params = load_model()
-
 if model is None:
     st.stop()
 
-# Extract threshold
+threshold = 0.5
 if isinstance(config, dict):
-    threshold = config.get('optimal_threshold', 0.5)
-else:
-    threshold = 0.5
+    threshold = config.get("optimal_threshold", 0.5)
 
 st.sidebar.header("Configuration")
 st.sidebar.write(f"Optimal Threshold: **{threshold:.3f}**")
 
 # =========================================================
-# UPLOAD TEST DATA
+# UPLOAD DATA
 # =========================================================
 st.header("Upload Test Dataset")
-file = st.file_uploader("Upload CSV file", type=['csv'])
+file = st.file_uploader("Upload CSV", type=['csv'])
 
 if file:
     data_test = pd.read_csv(file)
     st.write("### Preview Data")
     st.dataframe(data_test.head())
 
+    # FEATURES
     FEATURES_NUM = ["fatigue_count", "gap", "humidity"]
     FEATURES_CAT = ["conditions"]
-    TARGET = "next_week_fatigue"
+    TARGET = "next_week_fatigue"    # Optional
 
     COST = {"TP": 1096, "FP": 550, "FN": 1820, "TN": 0}
 
-    # Check required columns
-    required = FEATURES_NUM + FEATURES_CAT + [TARGET]
-    missing = [c for c in required if c not in data_test.columns]
+    # =========================================================
+    # CEK KETERSEDIAAN KOLOM
+    # =========================================================
+    required_features = FEATURES_NUM + FEATURES_CAT
+    missing = [c for c in required_features if c not in data_test.columns]
 
     if missing:
-        st.error(f"Missing columns: {missing}")
+        st.error(f"Missing required feature columns: {missing}")
         st.stop()
 
-    # Clean
-    data_test_clean = data_test.dropna(subset=[TARGET]).copy()
-
-    X_test = data_test_clean[FEATURES_NUM + FEATURES_CAT]
-    y_test = data_test_clean[TARGET].astype(int)
-
-    st.write(f"Total Samples: {len(X_test)}")
+    # =========================================================
+    # PROSES INPUT (TANPA ACTUAL)
+    # =========================================================
+    X_test = data_test[required_features]
 
     # Predict
     y_proba = model.predict_proba(X_test)[:, 1]
     y_pred = (y_proba >= threshold).astype(int)
 
-    # Confusion matrix
-    tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+    st.write(f"### Total Samples: **{len(X_test)}**")
 
-    st.subheader("Confusion Matrix")
-    cm_df = pd.DataFrame([[tn, fp], [fn, tp]],
-                         columns=["Pred 0", "Pred 1"],
-                         index=["Actual 0", "Actual 1"])
-    st.dataframe(cm_df)
+    # =========================================================
+    # OPTIONAL: CONFUSION MATRIX (HANYA JIKA ACTUAL ADA)
+    # =========================================================
+    if TARGET in data_test.columns:
+        st.subheader("Confusion Matrix (Menggunakan Kolom Actual)")
+        y_test = data_test[TARGET].astype(int)
 
-    # Cost analysis
-    tp_cost = tp * COST["TP"]
-    fp_cost = fp * COST["FP"]
-    fn_cost = fn * COST["FN"]
-    total_cost = tp_cost + fp_cost + fn_cost
-    cost_sample = total_cost / len(y_test)
+        tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+        cm_df = pd.DataFrame([[tn, fp], [fn, tp]],
+                             columns=["Pred 0", "Pred 1"],
+                             index=["Actual 0", "Actual 1"])
+        st.dataframe(cm_df)
 
-    st.subheader("Cost Analysis")
-    st.write(f"TP Cost : **{tp_cost}**")
-    st.write(f"FP Cost: **{fp_cost}**")
-    st.write(f"FN Cost: **{fn_cost}**")
-    st.write(f"### Total Cost: **{total_cost}**")
-    st.write(f"Cost per Sample: **{cost_sample:.2f}**")
-        # =========================================================
+        # COST ANALYSIS
+        tp_cost = tp * COST["TP"]
+        fp_cost = fp * COST["FP"]
+        fn_cost = fn * COST["FN"]
+        total_cost = tp_cost + fp_cost + fn_cost
+        cost_sample = total_cost / len(y_test)
+
+        st.subheader("Cost Analysis")
+        st.write(f"TP Cost : **{tp_cost}**")
+        st.write(f"FP Cost: **{fp_cost}**")
+        st.write(f"FN Cost: **{fn_cost}**")
+        st.write(f"### Total Cost: **{total_cost}**")
+        st.write(f"Cost per Sample: **{cost_sample:.2f}**")
+
+    else:
+        st.info("Kolom actual (`next_week_fatigue`) tidak ditemukan. Prediksi tetap ditampilkan.")
+
+    # =========================================================
     # VISUALISASI
     # =========================================================
-    st.header("Visualisasi Data Prediksi")
+    st.header("Visualisasi Prediksi (Tanpa Actual)")
 
-    # ============================
-    # CONFUSION MATRIX VERSI BARU (TIDAK ADA ACTUAL)
-    # ============================
-    st.subheader("Tabel Prediksi (Tanpa Actual)")
-
+    # Summary prediksi
+    st.subheader("Tabel Prediksi")
     pred_summary = pd.DataFrame({
         "Kategori": ["Prediksi 0 (Tidak Fatigue)", "Prediksi 1 (Fatigue)", "Total"],
         "Jumlah": [ (y_pred == 0).sum(), (y_pred == 1).sum(), len(y_pred) ]
     })
-
     st.dataframe(pred_summary)
 
-    # ============================
-    # 1. Pie Chart: Fatigue vs Non-Fatigue (dengan jumlah + persentase)
-    # ============================
+    # Pie Chart
     st.subheader("Presentase Prediksi Fatigue vs Tidak Fatigue")
-
     pred_counts = pd.Series(y_pred).value_counts()
     values = [pred_counts.get(0, 0), pred_counts.get(1, 0)]
     labels = [
@@ -131,30 +130,24 @@ if file:
     ax1.axis('equal')
     st.pyplot(fig1)
 
-    # ============================
-    # 2. Bar Chart CONDITIONS
-    # ============================
-    st.subheader("Distribusi CONDITIONS untuk Prediksi Fatigue")
-
-    fatigue_rows = data_test_clean[y_pred == 1]
+    # Barplot CONDITIONS untuk prediksi fatigue
+    st.subheader("Distribusi CONDITIONS (Hanya Prediksi Fatigue)")
+    fatigue_rows = data_test[y_pred == 1]
     cond_counts = fatigue_rows["conditions"].value_counts()
 
     fig2, ax2 = plt.subplots(figsize=(8, 4))
     sns.barplot(x=cond_counts.index, y=cond_counts.values, ax=ax2)
     ax2.set_xlabel("Conditions")
     ax2.set_ylabel("Jumlah")
-    ax2.set_title("Conditions pada Data dengan Prediksi Fatigue")
+    ax2.set_title("Conditions untuk Data Prediksi Fatigue")
     plt.xticks(rotation=45)
     st.pyplot(fig2)
 
-    # ============================
-    # 3. Histogram Humidity
-    # ============================
-    st.subheader("Distribusi Humidity untuk Prediksi Fatigue")
-
+    # Histogram humidity
+    st.subheader("Distribusi Humidity (Hanya Prediksi Fatigue)")
     fig3, ax3 = plt.subplots(figsize=(8, 4))
     sns.histplot(fatigue_rows["humidity"], bins=10, ax=ax3, kde=True)
     ax3.set_xlabel("Humidity")
     ax3.set_ylabel("Frekuensi")
-    ax3.set_title("Rentang Humidity pada Data dengan Prediksi Fatigue")
+    ax3.set_title("Rentang Humidity Prediksi Fatigue")
     st.pyplot(fig3)
