@@ -129,13 +129,13 @@ if file:
     sns.countplot(
         data=fatigue_rows,
         x="conditions",
-        hue="Predicted",
+        hue="conditions",
         ax=ax2
     )
 
     ax2.set_xlabel("Conditions")
     ax2.set_ylabel("Jumlah")
-    ax2.set_title("Conditions untuk Prediksi Fatigue (Dengan Hue)")
+    ax2.set_title("Conditions untuk Prediksi Fatigue")
 
     # Tambahkan label jumlah di atas bar
     for p in ax2.patches:
@@ -162,3 +162,4 @@ if file:
     ax3.set_ylabel("Frekuensi")
     ax3.set_title("Humidity pada Prediksi Fatigue")
     st.pyplot(fig3)
+
