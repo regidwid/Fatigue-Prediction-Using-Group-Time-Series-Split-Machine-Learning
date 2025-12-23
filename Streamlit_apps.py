@@ -118,9 +118,9 @@ if file:
     st.pyplot(fig1)
 
     # ==================================================================
-    # DISTRIBUSI CONDITIONS (HANYA PREDIKSI FATIGUE) + HUE + LABEL JUMLAH
+    # DISTRIBUSI CONDITIONS (HANYA PREDIKSI FATIGUE)
     # ==================================================================
-    st.subheader("Distribusi CONDITIONS (Hanya Prediksi Fatigue) — Dengan Hue dan Label Jumlah")
+    st.subheader("Distribusi CONDITIONS (Hanya Prediksi Fatigue)")
 
     fatigue_rows = data_test[y_pred == 1].copy()
     fatigue_rows["Predicted"] = "Fatigue (1)"
@@ -162,4 +162,5 @@ if file:
     ax3.set_ylabel("Frekuensi")
     ax3.set_title("Humidity pada Prediksi Fatigue")
     st.pyplot(fig3)
+
 
