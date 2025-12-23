@@ -97,27 +97,42 @@ if file:
     st.write(f"FN Cost: **{fn_cost}**")
     st.write(f"### Total Cost: **{total_cost}**")
     st.write(f"Cost per Sample: **{cost_sample:.2f}**")
-    # =========================================================
+        # =========================================================
     # VISUALISASI
     # =========================================================
     st.header("Visualisasi Data Prediksi")
 
     # ============================
-    # 1. Pie Chart: Fatigue vs Non-Fatigue
+    # CONFUSION MATRIX VERSI BARU (TIDAK ADA ACTUAL)
+    # ============================
+    st.subheader("Tabel Prediksi (Tanpa Actual)")
+
+    pred_summary = pd.DataFrame({
+        "Kategori": ["Prediksi 0 (Tidak Fatigue)", "Prediksi 1 (Fatigue)", "Total"],
+        "Jumlah": [ (y_pred == 0).sum(), (y_pred == 1).sum(), len(y_pred) ]
+    })
+
+    st.dataframe(pred_summary)
+
+    # ============================
+    # 1. Pie Chart: Fatigue vs Non-Fatigue (dengan jumlah + persentase)
     # ============================
     st.subheader("Presentase Prediksi Fatigue vs Tidak Fatigue")
 
     pred_counts = pd.Series(y_pred).value_counts()
-    labels = ['Tidak Fatigue (0)', 'Fatigue (1)']
-    sizes = [pred_counts.get(0, 0), pred_counts.get(1, 0)]
+    values = [pred_counts.get(0, 0), pred_counts.get(1, 0)]
+    labels = [
+        f"Tidak Fatigue (0)\n{values[0]} sampel",
+        f"Fatigue (1)\n{values[1]} sampel"
+    ]
 
     fig1, ax1 = plt.subplots()
-    ax1.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+    ax1.pie(values, labels=labels, autopct='%1.1f%%', startangle=90)
     ax1.axis('equal')
     st.pyplot(fig1)
 
     # ============================
-    # 2. Bar Chart: Distribusi CONDITIONS yang terprediksi fatigue
+    # 2. Bar Chart CONDITIONS
     # ============================
     st.subheader("Distribusi CONDITIONS untuk Prediksi Fatigue")
 
@@ -133,7 +148,7 @@ if file:
     st.pyplot(fig2)
 
     # ============================
-    # 3. Histogram / Bar Chart Humidity untuk prediksi fatigue
+    # 3. Histogram Humidity
     # ============================
     st.subheader("Distribusi Humidity untuk Prediksi Fatigue")
 
