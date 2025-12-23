@@ -97,108 +97,49 @@ if file:
     st.write(f"FN Cost: **{fn_cost}**")
     st.write(f"### Total Cost: **{total_cost}**")
     st.write(f"Cost per Sample: **{cost_sample:.2f}**")
+    # =========================================================
+    # VISUALISASI
+    # =========================================================
+    st.header("Visualisasi Data Prediksi")
 
-# =========================================================
-# DASHBOARD VISUALIZATION (NO ACTUAL LABEL AVAILABLE)
-# =========================================================
+    # ============================
+    # 1. Pie Chart: Fatigue vs Non-Fatigue
+    # ============================
+    st.subheader("Presentase Prediksi Fatigue vs Tidak Fatigue")
 
-st.header("📊 Fatigue Prediction Dashboard")
+    pred_counts = pd.Series(y_pred).value_counts()
+    labels = ['Tidak Fatigue (0)', 'Fatigue (1)']
+    sizes = [pred_counts.get(0, 0), pred_counts.get(1, 0)]
 
-result_df = X_test.copy()
-result_df["pred_proba"] = y_proba
-result_df["predicted"] = y_pred
+    fig1, ax1 = plt.subplots()
+    ax1.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+    ax1.axis('equal')
+    st.pyplot(fig1)
 
-# -------------------------
-# 1. Pie Chart: Distribusi Predicted Fatigue
-# -------------------------
-st.subheader("1️⃣ Persentase Prediksi Fatigue")
+    # ============================
+    # 2. Bar Chart: Distribusi CONDITIONS yang terprediksi fatigue
+    # ============================
+    st.subheader("Distribusi CONDITIONS untuk Prediksi Fatigue")
 
-fig1, ax1 = plt.subplots(figsize=(5, 5))
-result_df["predicted"].value_counts().plot(
-    kind="pie",
-    autopct="%1.1f%%",
-    labels=["Tidak Fatigue (0)", "Fatigue (1)"],
-    ax=ax1
-)
-ax1.set_ylabel("")
-ax1.set_title("Distribusi Prediksi Fatigue")
-st.pyplot(fig1)
+    fatigue_rows = data_test_clean[y_pred == 1]
+    cond_counts = fatigue_rows["conditions"].value_counts()
 
-# -------------------------
-# 2. Histogram: Distribusi Probabilitas Prediksi
-# -------------------------
-st.subheader("2️⃣ Distribusi Probabilitas Prediksi Fatigue")
+    fig2, ax2 = plt.subplots(figsize=(8, 4))
+    sns.barplot(x=cond_counts.index, y=cond_counts.values, ax=ax2)
+    ax2.set_xlabel("Conditions")
+    ax2.set_ylabel("Jumlah")
+    ax2.set_title("Conditions pada Data dengan Prediksi Fatigue")
+    plt.xticks(rotation=45)
+    st.pyplot(fig2)
 
-fig2, ax2 = plt.subplots(figsize=(6, 4))
-sns.histplot(result_df["pred_proba"], kde=True, ax=ax2)
-ax2.set_title("Distribusi Probabilitas Prediksi")
-ax2.set_xlabel("Predicted Probability")
-ax2.set_ylabel("Frequency")
-st.pyplot(fig2)
+    # ============================
+    # 3. Histogram / Bar Chart Humidity untuk prediksi fatigue
+    # ============================
+    st.subheader("Distribusi Humidity untuk Prediksi Fatigue")
 
-# -------------------------
-# 3. Rata-rata probabilitas per kondisi cuaca
-# -------------------------
-st.subheader("3️⃣ Rata-rata Probabilitas Fatigue per Kondisi Cuaca")
-
-weather_avg = result_df.groupby("conditions")["pred_proba"].mean().sort_values()
-
-fig3, ax3 = plt.subplots(figsize=(7, 4))
-weather_avg.plot(kind="bar", ax=ax3)
-ax3.set_title("Rata-rata Probabilitas Fatigue Berdasarkan Cuaca")
-ax3.set_xlabel("Kondisi Cuaca")
-ax3.set_ylabel("Probabilitas Rata-rata")
-st.pyplot(fig3)
-
-# -------------------------
-# 4. Bar Chart: Jumlah Prediksi Fatigue per Kondisi Cuaca
-# -------------------------
-st.subheader("4️⃣ Distribusi Prediksi Fatigue per Kondisi Cuaca")
-
-fatigue_by_weather = result_df.groupby("conditions")["predicted"].sum().sort_values()
-
-fig4, ax4 = plt.subplots(figsize=(7, 4))
-fatigue_by_weather.plot(kind="bar", ax=ax4)
-ax4.set_title("Jumlah Prediksi Fatigue per Kondisi Cuaca")
-ax4.set_xlabel("Kondisi Cuaca")
-ax4.set_ylabel("Jumlah Prediksi Fatigue")
-st.pyplot(fig4)
-
-# -------------------------
-# 5. Boxplot: Distribusi fitur numerik
-# -------------------------
-st.subheader("5️⃣ Distribusi Fitur Numerik")
-
-for col in FEATURES_NUM:
-    fig, ax = plt.subplots(figsize=(6, 4))
-    sns.boxplot(data=result_df, y=col, ax=ax)
-    ax.set_title(f"Distribusi Fitur: {col}")
-    ax.set_ylabel(col)
-    st.pyplot(fig)
-
-# -------------------------
-# 6. Scatter: Hubungan fitur numerik vs probabilitas
-# -------------------------
-st.subheader("6️⃣ Hubungan Fitur vs Probabilitas Prediksi")
-
-for col in FEATURES_NUM:
-    fig, ax = plt.subplots(figsize=(6, 4))
-    sns.scatterplot(data=result_df, x=col, y="pred_proba", ax=ax)
-    ax.set_title(f"{col} vs Probabilitas Fatigue")
-    ax.set_xlabel(col)
-    ax.set_ylabel("Pred Probability")
-    st.pyplot(fig)
-
-# -------------------------
-# 7. Heatmap korelasi fitur + prediksi
-# -------------------------
-st.subheader("7️⃣ Korelasi Fitur dengan Probabilitas Prediksi")
-
-corr = result_df[FEATURES_NUM + ["pred_proba"]].corr()
-
-fig7, ax7 = plt.subplots(figsize=(6, 4))
-sns.heatmap(corr, annot=True, cmap="coolwarm", ax=ax7)
-ax7.set_title("Heatmap Korelasi")
-st.pyplot(fig7)
-
-st.success("🎉 Dashboard visualisasi prediksi fatigue (tanpa actual) berhasil ditambahkan!")
+    fig3, ax3 = plt.subplots(figsize=(8, 4))
+    sns.histplot(fatigue_rows["humidity"], bins=10, ax=ax3, kde=True)
+    ax3.set_xlabel("Humidity")
+    ax3.set_ylabel("Frekuensi")
+    ax3.set_title("Rentang Humidity pada Data dengan Prediksi Fatigue")
+    st.pyplot(fig3)
