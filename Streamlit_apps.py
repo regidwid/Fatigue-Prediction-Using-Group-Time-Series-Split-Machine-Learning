@@ -98,16 +98,7 @@ if file:
             fn_cost = fn * COST["FN"]
             total_cost = tp_cost + fp_cost + fn_cost
 
-            st.subheader("Cost Analysis")
-            st.write(f"TP Cost : **{tp_cost}**")
-            st.write(f"FP Cost: **{fp_cost}**")
-            st.write(f"FN Cost: **{fn_cost}**")
-            st.write(f"### Total Cost: **{total_cost}**")
-
-        else:
-            st.warning("Kolom actual ditemukan, tetapi semua nilai tidak valid (harus 0 atau 1). Confusion matrix dilewati.")
-    else:
-        st.info("Kolom actual tidak ditemukan. Confusion matrix dilewati.")
+    
 
     # =========================================================
     # VISUALISASI PREDIKSI
@@ -156,3 +147,4 @@ if file:
     ax3.set_ylabel("Frekuensi")
     ax3.set_title("Humidity pada Prediksi Fatigue")
     st.pyplot(fig3)
+
