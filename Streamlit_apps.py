@@ -48,78 +48,83 @@ if file:
     # FEATURES
     FEATURES_NUM = ["fatigue_count", "gap", "humidity"]
     FEATURES_CAT = ["conditions"]
-    TARGET = "next_week_fatigue"    # Optional
+    TARGET = "next_week_fatigue"    # OPTIONAL
 
     COST = {"TP": 1096, "FP": 550, "FN": 1820, "TN": 0}
 
-    # =========================================================
-    # CEK KETERSEDIAAN KOLOM
-    # =========================================================
     required_features = FEATURES_NUM + FEATURES_CAT
     missing = [c for c in required_features if c not in data_test.columns]
 
     if missing:
-        st.error(f"Missing required feature columns: {missing}")
+        st.error(f"Missing required columns: {missing}")
         st.stop()
 
     # =========================================================
-    # PROSES INPUT (TANPA ACTUAL)
+    # PREDIKSI TANPA ACTUAL
     # =========================================================
     X_test = data_test[required_features]
-
-    # Predict
     y_proba = model.predict_proba(X_test)[:, 1]
     y_pred = (y_proba >= threshold).astype(int)
 
     st.write(f"### Total Samples: **{len(X_test)}**")
 
     # =========================================================
-    # OPTIONAL: CONFUSION MATRIX (HANYA JIKA ACTUAL ADA)
+    # CONFUSION MATRIX JIKA KOLOM ACTUAL VALID
     # =========================================================
     if TARGET in data_test.columns:
-        st.subheader("Confusion Matrix (Menggunakan Kolom Actual)")
-        y_test = data_test[TARGET].astype(int)
+        y_test_raw = data_test[TARGET]
 
-        tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
-        cm_df = pd.DataFrame([[tn, fp], [fn, tp]],
-                             columns=["Pred 0", "Pred 1"],
-                             index=["Actual 0", "Actual 1"])
-        st.dataframe(cm_df)
+        # Hanya ambil baris yang valid (0/1)
+        valid_mask = y_test_raw.isin([0, 1])
+        y_test_clean = y_test_raw[valid_mask]
+        y_pred_clean = y_pred[valid_mask]
 
-        # COST ANALYSIS
-        tp_cost = tp * COST["TP"]
-        fp_cost = fp * COST["FP"]
-        fn_cost = fn * COST["FN"]
-        total_cost = tp_cost + fp_cost + fn_cost
-        cost_sample = total_cost / len(y_test)
+        if len(y_test_clean) > 0:
+            st.subheader("Confusion Matrix (Actual Valid Only)")
 
-        st.subheader("Cost Analysis")
-        st.write(f"TP Cost : **{tp_cost}**")
-        st.write(f"FP Cost: **{fp_cost}**")
-        st.write(f"FN Cost: **{fn_cost}**")
-        st.write(f"### Total Cost: **{total_cost}**")
-        st.write(f"Cost per Sample: **{cost_sample:.2f}**")
+            tn, fp, fn, tp = confusion_matrix(
+                y_test_clean.astype(int),
+                y_pred_clean.astype(int)
+            ).ravel()
 
+            cm_df = pd.DataFrame([[tn, fp], [fn, tp]],
+                                 columns=["Pred 0", "Pred 1"],
+                                 index=["Actual 0", "Actual 1"])
+            st.dataframe(cm_df)
+
+            # COST
+            tp_cost = tp * COST["TP"]
+            fp_cost = fp * COST["FP"]
+            fn_cost = fn * COST["FN"]
+            total_cost = tp_cost + fp_cost + fn_cost
+
+            st.subheader("Cost Analysis")
+            st.write(f"TP Cost : **{tp_cost}**")
+            st.write(f"FP Cost: **{fp_cost}**")
+            st.write(f"FN Cost: **{fn_cost}**")
+            st.write(f"### Total Cost: **{total_cost}**")
+
+        else:
+            st.warning("Kolom actual ditemukan, tetapi semua nilai tidak valid (harus 0 atau 1). Confusion matrix dilewati.")
     else:
-        st.info("Kolom actual (`next_week_fatigue`) tidak ditemukan. Prediksi tetap ditampilkan.")
+        st.info("Kolom actual tidak ditemukan. Confusion matrix dilewati.")
 
     # =========================================================
-    # VISUALISASI
+    # VISUALISASI PREDIKSI
     # =========================================================
     st.header("Visualisasi Prediksi (Tanpa Actual)")
 
-    # Summary prediksi
+    # Summary
     st.subheader("Tabel Prediksi")
     pred_summary = pd.DataFrame({
         "Kategori": ["Prediksi 0 (Tidak Fatigue)", "Prediksi 1 (Fatigue)", "Total"],
-        "Jumlah": [ (y_pred == 0).sum(), (y_pred == 1).sum(), len(y_pred) ]
+        "Jumlah": [(y_pred == 0).sum(), (y_pred == 1).sum(), len(y_pred)]
     })
     st.dataframe(pred_summary)
 
     # Pie Chart
     st.subheader("Presentase Prediksi Fatigue vs Tidak Fatigue")
-    pred_counts = pd.Series(y_pred).value_counts()
-    values = [pred_counts.get(0, 0), pred_counts.get(1, 0)]
+    values = [(y_pred == 0).sum(), (y_pred == 1).sum()]
     labels = [
         f"Tidak Fatigue (0)\n{values[0]} sampel",
         f"Fatigue (1)\n{values[1]} sampel"
@@ -130,7 +135,7 @@ if file:
     ax1.axis('equal')
     st.pyplot(fig1)
 
-    # Barplot CONDITIONS untuk prediksi fatigue
+    # Barplot CONDITIONS
     st.subheader("Distribusi CONDITIONS (Hanya Prediksi Fatigue)")
     fatigue_rows = data_test[y_pred == 1]
     cond_counts = fatigue_rows["conditions"].value_counts()
@@ -139,7 +144,7 @@ if file:
     sns.barplot(x=cond_counts.index, y=cond_counts.values, ax=ax2)
     ax2.set_xlabel("Conditions")
     ax2.set_ylabel("Jumlah")
-    ax2.set_title("Conditions untuk Data Prediksi Fatigue")
+    ax2.set_title("Conditions untuk Prediksi Fatigue")
     plt.xticks(rotation=45)
     st.pyplot(fig2)
 
@@ -149,5 +154,5 @@ if file:
     sns.histplot(fatigue_rows["humidity"], bins=10, ax=ax3, kde=True)
     ax3.set_xlabel("Humidity")
     ax3.set_ylabel("Frekuensi")
-    ax3.set_title("Rentang Humidity Prediksi Fatigue")
+    ax3.set_title("Humidity pada Prediksi Fatigue")
     st.pyplot(fig3)
